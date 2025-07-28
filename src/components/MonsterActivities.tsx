@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import { useTokens } from '../contexts/TokenContext';
 import { useMonster } from '../contexts/MonsterContext';
+import { Zap } from 'lucide-react';
 
 interface Asset {
   info: {
@@ -43,13 +44,15 @@ interface MonsterActivitiesProps {
   activities?: Activities;
   theme: Theme;
   className?: string;
+  onEffectTrigger?: (effect: string) => void;
 }
 
 const MonsterActivities: React.FC<MonsterActivitiesProps> = ({
   monster: monsterProp,
   activities: activitiesProp,
   theme,
-  className = ''
+  className = '',
+  onEffectTrigger
 }) => {
   const navigate = useNavigate();
   const { triggerRefresh, wallet } = useWallet();
@@ -214,6 +217,13 @@ const MonsterActivities: React.FC<MonsterActivitiesProps> = ({
         // First trigger the regular refresh
         triggerRefresh();
         
+        // Trigger healing effect for feed action
+        if (actionType === 'FEED' && onEffectTrigger) {
+          const healingEffects = ['Small Heal', 'Medium Heal', 'Large Heal', 'Full Heal'];
+          const randomHeal = healingEffects[Math.floor(Math.random() * healingEffects.length)];
+          onEffectTrigger(randomHeal);
+        }
+        
         // Then schedule the forced monster data refresh after delay
         console.log(`[MonsterActivities] ${actionType} completed, scheduling monster refresh`);
         refreshMonsterAfterActivity();
@@ -233,10 +243,28 @@ const MonsterActivities: React.FC<MonsterActivitiesProps> = ({
       else if (actionType === 'MISSION') setIsOnMission(false);
     }
   };
+  // Calculate stats for summary
+  const totalActivities = Object.keys(activities).length;
+  const availableActivities = [canFeed, canPlay, canBattle, canMission].filter(Boolean).length;
+  const netRewards = (activities.feed.energyGain || 0) + (activities.play.happinessGain || 0) - 
+                     (activities.play.energyCost || 0) - (activities.battle.energyCost || 0) - 
+                     (activities.mission.energyCost || 0);
+
+  const isCompact = className?.includes('compact-mode');
+
   return (
-    <div className={`activities-section ${theme.container} rounded-lg p-4 ${className}`}>
-      <h3 className={`text-xl font-bold mb-2 ${theme.text}`}>Activities</h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
+    <div className={`activities-section bg-gradient-to-br from-slate-50 to-slate-100 ${isCompact ? 'p-3 rounded-2xl h-full flex flex-col' : 'p-6 rounded-3xl'} ${className}`}>
+      <div className={isCompact ? 'h-full flex flex-col' : 'max-w-4xl mx-auto'}>
+        {/* Header */}
+        <div className={`flex items-center gap-3 ${isCompact ? 'mb-4' : 'mb-8'}`}>
+          <div className={`${isCompact ? 'p-1.5' : 'p-2'} bg-gradient-to-r from-orange-400 to-yellow-400 rounded-xl`}>
+            <Zap className={`${isCompact ? 'w-4 h-4' : 'w-6 h-6'} text-white`} />
+          </div>
+          <h1 className={`${isCompact ? 'text-xl' : 'text-3xl'} font-bold text-slate-800`}>Activities</h1>
+        </div>
+
+        {/* Activities Grid */}
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${isCompact ? 'mb-3 flex-1' : 'gap-6 mb-8'}`}>
         <ActivityCard
           title="Feed"
           buttonText={feedButtonText}
@@ -277,8 +305,7 @@ const MonsterActivities: React.FC<MonsterActivitiesProps> = ({
           onAction={() => monsterInteraction('PLAY')}
           isLoading={isPlaying || (monster.status.type === 'Play' && !timeUp)}
           isDisabled={!canPlay || (monster.status.type !== 'Home' && (monster.status.type !== 'Play' || (monster.status.type === 'Play' && !timeUp)))}
-          remainingTime={monster.status.type === 'Play' && monster.status.until_time ? formatTimeRemaining(monster.status.until_time) : undefined}
-          progress={monster.status.type === 'Play' && monster.status.since && monster.status.until_time ? calculateProgress(monster.status.since, monster.status.until_time) : undefined}
+
           theme={theme}
           highlightSelectable={!isPlaying && canPlay}
         />
@@ -303,8 +330,7 @@ const MonsterActivities: React.FC<MonsterActivitiesProps> = ({
           onAction={() => monsterInteraction('BATTLE')}
           isLoading={isInBattle || (monster.status.type === 'Battle' && !timeUp)}
           isDisabled={!canBattle || (monster.status.type !== 'Home' && (monster.status.type !== 'Battle' || (monster.status.type === 'Battle' && !timeUp)))}
-          remainingTime={monster.status.type === 'Battle' && monster.status.until_time ? formatTimeRemaining(monster.status.until_time) : undefined}
-          progress={monster.status.type === 'Battle' && monster.status.since && monster.status.until_time ? calculateProgress(monster.status.since, monster.status.until_time) : undefined}
+
           theme={theme}
           highlightSelectable={!isInBattle && canBattle}
         />
@@ -329,11 +355,29 @@ const MonsterActivities: React.FC<MonsterActivitiesProps> = ({
           onAction={() => monsterInteraction('MISSION')}
           isLoading={isOnMission || (monster.status.type === 'Mission' && !timeUp)}
           isDisabled={!canMission || (monster.status.type !== 'Home' && (monster.status.type !== 'Mission' || (monster.status.type === 'Mission' && !timeUp)))}
-          remainingTime={monster.status.type === 'Mission' && monster.status.until_time ? formatTimeRemaining(monster.status.until_time) : undefined}
-          progress={monster.status.type === 'Mission' && monster.status.since && monster.status.until_time ? calculateProgress(monster.status.since, monster.status.until_time) : undefined}
+
           theme={theme}
           highlightSelectable={!isOnMission && canMission}
         />
+        </div>
+
+        {/* Stats Summary */}
+        {!isCompact && (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 text-center">
+              <div className="text-2xl font-bold text-slate-800">{totalActivities}</div>
+              <div className="text-sm text-slate-600">Total Activities</div>
+            </div>
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 text-center">
+              <div className="text-2xl font-bold text-green-600">+{Math.max(0, netRewards)}</div>
+              <div className="text-sm text-slate-600">Net Rewards</div>
+            </div>
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 text-center">
+              <div className="text-2xl font-bold text-blue-600">{availableActivities}</div>
+              <div className="text-sm text-slate-600">Available Now</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,8 +3,9 @@ import { useWallet } from '../hooks/useWallet';
 import { useTokens } from '../contexts/TokenContext';
 import { getLootBoxes, openLootBoxWithRarity, LootBoxResponse } from '../utils/aoHelpers';
 import { currentTheme } from '../constants/theme';
-import { SupportedAssetId } from '../constants/Constants';
+import { SupportedAssetId, Gateway } from '../constants/Constants';
 import Confetti from 'react-confetti';
+import { Package2, Diamond, Star, Crown, Sparkles, Zap, Gift, X } from 'lucide-react';
 import '../styles/LootBoxUtil.css';
 
 interface LootBoxProps {
@@ -50,6 +51,70 @@ const LootBoxUtil: React.FC<LootBoxProps> = ({
       case 4: return 'Epic';
       case 5: return 'Legendary';
       default: return `Level ${rarity}`;
+    }
+  };
+
+  // Rarity configurations matching the beautiful design
+  const rarityConfigs = {
+    1: {
+      name: 'Common',
+      icon: Package2,
+      gradient: 'from-emerald-400 to-green-500',
+      bgGradient: 'from-emerald-50 to-green-50',
+      borderColor: 'border-emerald-200',
+      shadowColor: 'shadow-emerald-200/50',
+      glowColor: 'group-hover:shadow-emerald-400/30',
+      textColor: 'text-emerald-700',
+      badgeColor: 'bg-emerald-500',
+      stars: 1
+    },
+    2: {
+      name: 'Uncommon',
+      icon: Diamond,
+      gradient: 'from-blue-400 to-cyan-500',
+      bgGradient: 'from-blue-50 to-cyan-50',
+      borderColor: 'border-blue-200',
+      shadowColor: 'shadow-blue-200/50',
+      glowColor: 'group-hover:shadow-blue-400/30',
+      textColor: 'text-blue-700',
+      badgeColor: 'bg-blue-500',
+      stars: 2
+    },
+    3: {
+      name: 'Rare',
+      icon: Sparkles,
+      gradient: 'from-purple-400 to-indigo-500',
+      bgGradient: 'from-purple-50 to-indigo-50',
+      borderColor: 'border-purple-200',
+      shadowColor: 'shadow-purple-200/50',
+      glowColor: 'group-hover:shadow-purple-400/30',
+      textColor: 'text-purple-700',
+      badgeColor: 'bg-purple-500',
+      stars: 3
+    },
+    4: {
+      name: 'Epic',
+      icon: Crown,
+      gradient: 'from-violet-400 to-purple-600',
+      bgGradient: 'from-violet-50 to-purple-50',
+      borderColor: 'border-violet-200',
+      shadowColor: 'shadow-violet-200/50',
+      glowColor: 'group-hover:shadow-violet-400/30',
+      textColor: 'text-violet-700',
+      badgeColor: 'bg-violet-500',
+      stars: 4
+    },
+    5: {
+      name: 'Legendary',
+      icon: Star,
+      gradient: 'from-amber-400 to-orange-500',
+      bgGradient: 'from-amber-50 to-orange-50',
+      borderColor: 'border-amber-200',
+      shadowColor: 'shadow-amber-200/50',
+      glowColor: 'group-hover:shadow-amber-400/30',
+      textColor: 'text-amber-700',
+      badgeColor: 'bg-amber-500',
+      stars: 5
     }
   };
   
@@ -155,41 +220,7 @@ const LootBoxUtil: React.FC<LootBoxProps> = ({
     setAssets(assetMap);
   }, [wallet?.address, tokenBalances]);
   
-  // Get color class based on rarity
-  const getRarityColorClass = (rarity: number): string => {
-    switch (rarity) {
-      case 1: // Common
-        return 'bg-gray-700 text-gray-100 border-gray-500';
-      case 2: // Uncommon
-        return 'bg-green-700 text-green-100 border-green-500';
-      case 3: // Rare
-        return 'bg-blue-700 text-blue-100 border-blue-500';
-      case 4: // Epic
-        return 'bg-purple-700 text-purple-100 border-purple-500';
-      case 5: // Legendary
-        return 'bg-yellow-700 text-yellow-100 border-yellow-500';
-      default:
-        return 'bg-gray-700 text-gray-100 border-gray-500';
-    }
-  };
-  
-  // Get glow effects based on rarity
-  const getRarityGlowClass = (rarity: number): string => {
-    switch (rarity) {
-      case 1: // Common
-        return '';
-      case 2: // Uncommon
-        return 'shadow-sm shadow-green-400';
-      case 3: // Rare
-        return 'shadow-md shadow-blue-400';
-      case 4: // Epic
-        return 'shadow-lg shadow-purple-400 animate-pulse';
-      case 5: // Legendary
-        return 'shadow-xl shadow-yellow-400 animate-pulse';
-      default:
-        return '';
-    }
-  };
+
   
 
 
@@ -325,6 +356,38 @@ const LootBoxUtil: React.FC<LootBoxProps> = ({
     
     return berryEmojis[tokenId] || "🌟";
   };
+
+  // Get reward gradient based on token type
+  const getRewardGradient = (tokenId: string): string => {
+    const gradients: {[key: string]: string} = {
+      "30cPTQXrHN76YZ3bLfNAePIEYDb5Xo1XnbQ-xmLMOM0": "from-red-500 to-red-700", // Fire Berry
+      "twFZ4HTvL_0XAIOMPizxs_S3YH5J5yGvJ8zKiMReWF0": "from-blue-500 to-blue-700", // Water Berry  
+      "2NoNsZNyHMWOzTqeQUJW9Xvcga3iTonocFIsgkWIiPM": "from-gray-600 to-gray-800", // Rock Berry
+      "XJjSdWaorbQ2q0YkaQSmylmuADWH1fh2PvgfdLmXlzA": "from-sky-500 to-blue-600", // Air Berry
+    };
+    
+    return gradients[tokenId] || "from-purple-500 to-indigo-600";
+  };
+
+  // Get token logo or fallback to emoji
+  const getTokenIcon = (tokenId: string) => {
+    const tokenInfo = tokenBalances[tokenId as SupportedAssetId];
+    
+    if (tokenInfo?.info?.logo) {
+      return (
+        <img 
+          src={`${Gateway}${tokenInfo.info.logo}`}
+          alt={tokenInfo.info.name || 'Token'}
+          className="w-8 h-8 rounded-full"
+        />
+      );
+    }
+    
+    // Fallback to emoji
+    return <div className="text-3xl">{getBerryEmoji(tokenId)}</div>;
+  };
+
+
   
   // Group lootboxes by rarity
   const groupedLootboxes = lootBoxes.reduce<{[key: number]: number}>((acc, box) => {
@@ -332,53 +395,20 @@ const LootBoxUtil: React.FC<LootBoxProps> = ({
     return acc;
   }, {});
   
-  // Sort rarity levels for consistent display
-  const rarityLevels = Object.keys(groupedLootboxes).map(Number).sort((a, b) => a - b);
+
   
-  // Render each rarity section
-  const renderRaritySection = (rarity: number) => {
-    const count = groupedLootboxes[rarity] || 0;
-    const rarityName = getRarityName(rarity);
-    const colorClass = getRarityColorClass(rarity);
-    const glowClass = getRarityGlowClass(rarity);
-    
-    const isSelected = selectedRarity === rarity && isOpening;
-    
-    return (
-      <div key={rarity} className="mb-3">
-        <h3 className={`text-sm font-bold ${theme.text} mb-1`}>{rarityName}</h3>
-        <div className="flex gap-2">
-          {count > 0 ? (
-            <div 
-              className={`loot-box-item relative p-4 rounded-lg border-2 ${colorClass} ${glowClass} flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-pointer w-24 h-24 ${isSelected ? 'scale-110' : ''}`}
-              title={`Open ${rarityName} Loot Box`}
-              onClick={() => !isOpening && handleOpenLootBox(rarity)}
-            >
-              <div className={`loot-box-icon text-3xl mb-1 ${isSelected && isShaking ? 'shake-animation' : ''} ${isSelected && isExploding ? 'explode-animation' : ''}`}>
-                📦
-              </div>
-              <span className="font-medium text-xs text-center">{rarityName}</span>
-              <div className="absolute top-1 right-1 bg-black bg-opacity-50 rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                {count}
-              </div>
-            </div>
-          ) : (
-            <div 
-              className={`loot-box-item-empty relative p-4 rounded-lg border-2 border-gray-700 bg-gray-800 bg-opacity-50 flex flex-col items-center justify-center w-24 h-24`}
-            >
-              <div className="loot-box-icon text-3xl mb-1 opacity-30">📦</div>
-              <span className="font-medium text-xs text-center opacity-30">{rarityName}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-  
+  // Calculate total boxes for stats
+  const totalBoxes = Object.values(groupedLootboxes).reduce((sum, count) => sum + count, 0);
+  const commonBoxes = groupedLootboxes[1] || 0;
+  const uncommonBoxes = groupedLootboxes[2] || 0;
+  const rareAndAbove = (groupedLootboxes[3] || 0) + (groupedLootboxes[4] || 0) + (groupedLootboxes[5] || 0);
+
+  const isCompact = className?.includes('compact-mode');
+
   return (
-    <div className={`loot-box-container relative ${theme.container} border ${theme.border} backdrop-blur-md p-4 ${className}`}>
+    <div className={`treasure-vault-container relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 ${isCompact ? 'p-3 rounded-2xl h-full flex flex-col' : 'p-6 rounded-3xl'} ${className}`}>
       {showConfetti && (
-        <div className="confetti-wrapper">
+        <div className="confetti-wrapper fixed inset-0 z-50 pointer-events-none">
           <Confetti 
             recycle={false} 
             numberOfPieces={500}
@@ -393,74 +423,233 @@ const LootBoxUtil: React.FC<LootBoxProps> = ({
         </div>
       )}
       
-      <h3 className={`text-lg font-bold ${theme.text} mb-3`}>Treasure Vault</h3>
-      
-      {isLoading ? (
-        <p className={`${theme.text}`}>Loading treasures...</p>
-      ) : lootBoxes.length === 0 ? (
-        <p className={`${theme.text} text-sm`}>Your vault is empty. Complete activities to earn treasure!</p>
-      ) : (
-        <div className="space-y-2">
-          <div className="loot-box-sections">
-            <div className="flex flex-wrap gap-3 justify-center">
-              {rarityLevels.map(renderRaritySection)}
+      <div className={isCompact ? 'h-full flex flex-col' : 'max-w-4xl mx-auto'}>
+        {/* Header */}
+        <div className={`flex items-center gap-3 ${isCompact ? 'mb-4' : 'mb-8'}`}>
+          <div className="relative">
+            <div className={`${isCompact ? 'p-1.5' : 'p-3'} bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-lg`}>
+              <Diamond className={`${isCompact ? 'w-4 h-4' : 'w-8 h-8'} text-white`} />
             </div>
+            {!isCompact && <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-pulse" />}
           </div>
-          
-          {/* Rewards section - now at the bottom */}
-          {openResult && openResult.result && (
-            <div className={`result-container mt-6 p-3 rounded-lg ${theme.container} border ${theme.border} transition-all duration-1000 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className={`text-sm font-bold ${theme.text}`}>Rewards:</h3>
-                <button 
-                  onClick={() => {
-                    setIsFadingOut(true);
-                    setTimeout(() => {
-                      setIsFadingOut(false);
-                      setOpenResult(null);
-                      setIsExploding(false);
-                      // No refresh trigger here either
-                    }, 1000);
-                  }} 
-                  className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-100 px-2 py-1 rounded-md"
-                  aria-label="Dismiss rewards"
-                >
-                  ✕ Dismiss
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {Array.isArray(openResult.result) && openResult.result.length > 0 ? (
-                  openResult.result.map((item, index) => (
-                    <div 
-                      key={index} 
-                      className={`berry-item p-2 rounded-lg border ${getBerryColor(item.token)} flex items-center justify-between text-sm`}
-                    >
-                      <div className="flex items-center">
-                        <span className="text-xl mr-2">
-                          {getBerryEmoji(item.token)}
-                        </span>
-                        <span className="font-medium">{getTokenName(item.token)}</span>
-                      </div>
-                      <span className="font-bold">x{item.quantity}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-2">
-                    <p className={`${theme.text}`}>No rewards received. Try again!</p>
-                  </div>
-                )}
-              </div>
-              <p className={`${theme.text} mt-2 text-xs text-center`}>
-                {Array.isArray(openResult.result) && openResult.result.length > 0 ? 'Added to inventory!' : 'Better luck next time!'}
-              </p>
-            </div>
-          )}
-          
-          <div className="text-xs text-center text-gray-400 mt-2">
-            Click on a loot box to open it
+          <div>
+            <h1 className={`${isCompact ? 'text-xl' : 'text-4xl'} font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent`}>
+              Treasure Vault
+            </h1>
+            {!isCompact && <p className="text-slate-600 mt-1">Discover amazing rewards in your collection</p>}
           </div>
         </div>
-      )}
+        
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p className="text-slate-600">Loading treasures...</p>
+          </div>
+        ) : lootBoxes.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-slate-600 text-lg">Your vault is empty. Complete activities to earn treasure!</p>
+          </div>
+        ) : (
+          <>
+            {/* Treasure Boxes Grid */}
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${isCompact ? 'lg:grid-cols-3 gap-2 mb-3 flex-1 p-4' : 'lg:grid-cols-3 gap-6 mb-8 p-6'}`}>
+              {[1, 2, 3, 4, 5].map(rarity => {
+                const config = rarityConfigs[rarity];
+                const count = groupedLootboxes[rarity] || 0;
+                const IconComponent = config.icon;
+                const isSelected = selectedRarity === rarity && isOpening;
+                
+                return (
+                  <div
+                    key={rarity}
+                    className={`group relative bg-gradient-to-br ${config.bgGradient} ${config.borderColor} border-2 hover:border-opacity-60 transition-all duration-300 cursor-pointer hover:scale-[1.02] ${config.shadowColor} hover:shadow-xl ${config.glowColor} rounded-xl ${
+                      count === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                    } ${isSelected ? 'scale-[1.05] ring-4 ring-blue-400/50 shadow-2xl' : ''}`}
+                    onClick={() => count > 0 && !isOpening && handleOpenLootBox(rarity)}
+                  >
+                    {/* Count Badge - Completely outside the card */}
+                    <div className="absolute -top-2 -right-2 z-30 transform translate-x-1 -translate-y-1">
+                      <div className={`${config.badgeColor} text-white font-bold ${isCompact ? 'text-xs px-2.5 py-1 min-w-[28px] h-7' : 'text-sm px-3 py-1.5 min-w-[32px] h-8'} rounded-full shadow-2xl border-2 border-white flex items-center justify-center ${count === 0 ? 'opacity-50' : ''}`}>
+                        {count}
+                      </div>
+                    </div>
+
+                    <div className={`${isCompact ? 'p-3' : 'p-6'} text-center relative overflow-hidden`}>
+                      {/* Background Decoration */}
+                      <div className="absolute inset-0 opacity-5">
+                        <div className={`absolute top-2 right-2 ${isCompact ? 'w-8 h-8' : 'w-16 h-16'} rounded-full bg-current`} />
+                        <div className={`absolute bottom-2 left-2 ${isCompact ? 'w-6 h-6' : 'w-12 h-12'} rounded-full bg-current`} />
+                      </div>
+
+                      {/* Icon Container with Enhanced Animations */}
+                      <div className={`relative ${isCompact ? 'mb-2' : 'mb-4'}`}>
+                        <div
+                          className={`${isCompact ? 'w-12 h-12' : 'w-20 h-20'} mx-auto rounded-2xl bg-gradient-to-r ${config.gradient} ${isCompact ? 'p-2' : 'p-4'} shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110 ${
+                            isSelected && isShaking ? 'animate-bounce' : ''
+                          } ${isSelected && isExploding ? 'animate-ping scale-125' : ''}`}
+                        >
+                          <IconComponent className="w-full h-full text-white" />
+                        </div>
+
+                        {/* Enhanced Sparkle Effects */}
+                        <div className={`absolute -top-1 -right-1 transition-opacity duration-300 ${
+                          isSelected || !count ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}>
+                          <Zap className={`${isCompact ? 'w-3 h-3' : 'w-4 h-4'} text-yellow-400 animate-pulse`} />
+                        </div>
+                        <div className={`absolute -bottom-1 -left-1 transition-opacity duration-300 delay-100 ${
+                          isSelected || !count ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}>
+                          <Sparkles className={`${isCompact ? 'w-3 h-3' : 'w-4 h-4'} text-yellow-400 animate-pulse`} />
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className={`${isCompact ? 'text-sm' : 'text-xl'} font-bold ${config.textColor} ${isCompact ? 'mb-1' : 'mb-2'}`}>{config.name}</h3>
+
+                      {/* Rarity Indicator */}
+                      <div className={`flex justify-center ${isCompact ? 'mb-2' : 'mb-4'}`}>
+                        {Array.from({ length: config.stars }, (_, i) => (
+                          <Star key={i} className={`${isCompact ? 'w-2 h-2' : 'w-4 h-4'} ${config.textColor} fill-current`} />
+                        ))}
+                      </div>
+
+                      {/* Open Button */}
+                      <button
+                        className={`w-full ${config.borderColor} ${config.textColor} hover:bg-white/50 transition-all duration-200 group-hover:shadow-md border border-current rounded-lg ${isCompact ? 'py-1 px-2 text-xs' : 'py-2 px-4'} font-medium ${
+                          count === 0 || isOpening ? 'opacity-50 cursor-not-allowed' : ''
+                        } ${isSelected ? 'animate-pulse bg-white/30' : ''}`}
+                        disabled={count === 0 || isOpening}
+                      >
+                        {isSelected ? 'Opening...' : 'Open Box'}
+                      </button>
+
+                      {/* Hover Glow Effect */}
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-r ${config.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-lg`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+
+
+            {/* Stats Summary - Hidden in compact mode */}
+            {!isCompact && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-slate-800">{totalBoxes}</div>
+                  <div className="text-sm text-slate-600">Total Boxes</div>
+                </div>
+                <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-emerald-600">{commonBoxes}</div>
+                  <div className="text-sm text-slate-600">Common</div>
+                </div>
+                <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600">{uncommonBoxes}</div>
+                  <div className="text-sm text-slate-600">Uncommon</div>
+                </div>
+                <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-amber-600">{rareAndAbove}</div>
+                  <div className="text-sm text-slate-600">Rare+</div>
+                </div>
+              </div>
+                        )}
+
+            {/* Instructions - Always show in compact mode */}
+            <div className={`text-center ${isCompact ? 'mt-2' : 'mb-4'}`}>
+              <div className={`inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm rounded-full ${isCompact ? 'px-3 py-1.5' : 'px-6 py-3'} shadow-lg`}>
+                <Package2 className={`${isCompact ? 'w-3 h-3' : 'w-5 h-5'} text-slate-600`} />
+                <p className={`text-slate-600 font-medium ${isCompact ? 'text-xs' : 'text-sm'}`}>
+                  Click on a treasure box to open it and discover amazing rewards!
+                </p>
+              </div>
+            </div>
+
+            {/* Enhanced Rewards section - Now as Popup Modal */}
+            {openResult && openResult.result && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className={`bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transition-all duration-300 ${isFadingOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'} animate-in zoom-in-95`}>
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=60 height=60 viewBox=0 0 60 60 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=none fillRule=evenodd%3E%3Cg fill=%23ffffff fillOpacity=0.1%3E%3Ccircle cx=30 cy=30 r=4/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-xl">
+                          <Gift className="w-8 h-8" />
+                        </div>
+                        <div>
+                          <h2 className="text-3xl font-bold">Rewards Received!</h2>
+                          <p className="text-purple-100 mt-1">Congratulations on your amazing loot!</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsFadingOut(true);
+                          setTimeout(() => {
+                            setIsFadingOut(false);
+                            setOpenResult(null);
+                            setIsExploding(false);
+                            setSelectedRarity(null);
+                          }, 300);
+                        }}
+                        className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Rewards Grid */}
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                      {Array.isArray(openResult.result) && openResult.result.length > 0 ? (
+                        openResult.result.map((item, index) => (
+                          <div
+                            key={index}
+                            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${getRewardGradient(item.token)} p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] animate-in slide-in-from-bottom-4`}
+                            style={{ animationDelay: `${index * 100}ms` }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {getTokenIcon(item.token)}
+                                <div>
+                                  <h3 className="font-bold text-lg">{getTokenName(item.token)}</h3>
+                                  <p className="text-white/80 text-sm">Collected</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold">x{item.quantity}</div>
+                              </div>
+                            </div>
+
+                            {/* Shine effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-full text-center py-8">
+                          <p className="text-slate-600 text-xl">No rewards received. Try again!</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer Message */}
+                    {Array.isArray(openResult.result) && openResult.result.length > 0 && (
+                      <div className="text-center">
+                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-6 py-3 rounded-full font-medium">
+                          <span className="text-xl">✨</span> Items added to your inventory!
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };

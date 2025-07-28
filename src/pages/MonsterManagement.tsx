@@ -16,6 +16,7 @@ import LootBoxUtil from '../components/LootBoxUtil';
 import MonsterActivities from '../components/MonsterActivities';
 import { useMonster } from '../contexts/MonsterContext';
 import MonsterStatusWindow from '../components/MonsterStatusWindow';
+import Modal from '../components/Modal';
 
 export const MonsterManagement: React.FC = (): JSX.Element => {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ export const MonsterManagement: React.FC = (): JSX.Element => {
   const [isAdopting, setIsAdopting] = useState(false);
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [showStatModal, setShowStatModal] = useState(false);
+  const [showCardModal, setShowCardModal] = useState(false);
   const [currentEffect, setCurrentEffect] = useState<string | null>(null);
   const theme = currentTheme(darkMode);
   const [, setForceUpdate] = useState({});
@@ -124,14 +126,13 @@ export const MonsterManagement: React.FC = (): JSX.Element => {
     
     setIsAdopting(true);
     try {
-      await adoptMonster(wallet, () => {
-        // Trigger regular refresh
-        triggerRefresh();
-        
-        // Schedule monster refresh after adoption
-        console.log('[MonsterManagement] Monster adoption initiated, scheduling refresh');
-        refreshMonsterAfterActivity();
-      });
+      await adoptMonster(wallet, walletStatus || { isUnlocked: false, faction: '' });
+      // Trigger regular refresh
+      triggerRefresh();
+      
+      // Schedule monster refresh after adoption
+      console.log('[MonsterManagement] Monster adoption initiated, scheduling refresh');
+      refreshMonsterAfterActivity();
     } catch (error) {
       console.error('[MonsterManagement] Adoption error:', error);
     } finally {
@@ -180,18 +181,24 @@ export const MonsterManagement: React.FC = (): JSX.Element => {
     return monster.status.until_time && Date.now() > monster.status.until_time;
   }, []);
 
-  const renderMonsterCard = React.useMemo(() => {
+  const renderMonsterDashboard = React.useMemo(() => {
     if (!walletStatus?.monster) {
       return (
-        <div className={`no-monster-card ${theme.container} border ${theme.border} backdrop-blur-md`}>
-          <h2 className={`no-monster-title ${theme.text}`}>Adopt a Monster</h2>
-          <button
-            onClick={handleAdoptMonster}
-            disabled={isAdopting}
-            className={`adopt-button ${theme.buttonBg} ${theme.buttonHover} ${theme.text}`}
-          >
-            {isAdopting ? 'Adopting...' : 'Adopt Monster'}
-          </button>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+          <div className={`${theme.container} border ${theme.border} backdrop-blur-md rounded-3xl p-8 text-center max-w-md`}>
+            <div className="text-6xl mb-4">🐱</div>
+            <h2 className={`text-2xl font-bold ${theme.text} mb-4`}>Adopt Your First Monster</h2>
+            <p className={`${theme.text} opacity-80 mb-6`}>
+              Start your adventure by adopting a unique monster companion
+            </p>
+            <button
+              onClick={handleAdoptMonster}
+              disabled={isAdopting}
+              className={`w-full px-6 py-3 rounded-2xl ${theme.buttonBg} ${theme.buttonHover} ${theme.text} font-semibold transition-all transform hover:scale-105 disabled:opacity-50 disabled:transform-none`}
+            >
+              {isAdopting ? 'Adopting...' : 'Adopt Monster'}
+            </button>
+          </div>
         </div>
       );
     }
@@ -201,64 +208,85 @@ export const MonsterManagement: React.FC = (): JSX.Element => {
     const activities = walletStatus.monster.activities;
     
     return (
-      <div className={`monster-card ${theme.container} border ${theme.border} backdrop-blur-md p-6`}>
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Left Column - Monster Card */}
-          <div className="flex flex-col items-center md:w-1/2">
-            <MonsterCardDisplay 
-              monster={monster}
-              expanded={true}
-              className="w-full h-full"
-            />
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-screen lg:h-[calc(100vh-2rem)]">
+          {/* Left Column - Monster Status Window + Info */}
+          <div className="space-y-4">
+            {/* Monster Status Window */}
+            <div className={`${theme.container} rounded-xl p-4 flex-grow`}>
+              <MonsterStatusWindow 
+                monster={monster}
+                theme={theme}
+                currentEffect={currentEffect}
+                onEffectTrigger={triggerEffect}
+                formatTimeRemaining={formatTimeRemaining}
+                calculateProgress={calculateProgress}
+                isActivityComplete={isActivityComplete}
+              />
+            </div>
+            
+            {/* Monster Header - moved below status window */}
+            <div className={`${theme.container} rounded-xl p-3 flex items-center justify-between`}>
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-500 rounded-lg flex items-center justify-center text-sm">
+                  👾
+                </div>
+                <div>
+                  <h1 className={`text-lg font-bold ${theme.text}`}>
+                    {monster.name || 'FireFox'}
+                  </h1>
+                  <p className={`text-xs ${theme.text} opacity-70`}>
+                    {monster.status.type} Mode • Level {monster.level} • EXP: {monster.exp}/{getFibonacciExp(monster.level)}
+                    {monster.status.type === 'Home' && monster.exp >= getFibonacciExp(monster.level) && (
+                      <span className="ml-2 px-2 py-1 bg-yellow-500 text-yellow-900 rounded-full text-xs font-bold">
+                        READY TO LEVEL UP!
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                {monster.status.type === 'Home' && monster.exp >= getFibonacciExp(monster.level) && (
+                  <button
+                    onClick={handleLevelUp}
+                    disabled={isLevelingUp}
+                    className={`px-3 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-semibold transition-all transform hover:scale-105 disabled:opacity-50 text-xs`}
+                  >
+                    {isLevelingUp ? 'Leveling...' : 'Level Up'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowCardModal(true)}
+                  className={`px-4 py-2 rounded-lg ${theme.buttonBg} ${theme.buttonHover} ${theme.text} font-medium transition-all hover:scale-105 text-xs`}
+                >
+                  View NFT Card
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Right Column - Stats and Info */}
-          <div className="flex flex-col md:w-1/2 space-y-6">
-            {/* Monster Status Window Component */}
-            <MonsterStatusWindow 
-              monster={monster}
-              theme={theme}
-              currentEffect={currentEffect}
-              onEffectTrigger={triggerEffect}
-              formatTimeRemaining={formatTimeRemaining}
-              calculateProgress={calculateProgress}
-              isActivityComplete={isActivityComplete}
-            />
-            
-            {/* Activities Section */}
-            <MonsterActivities 
-              monster={monster}
-              activities={activities}
-              theme={theme}
-            />
-            
-            {/* Loot Box Section */}
-            <div className={`loot-box-section ${theme.container} rounded-lg p-4 mt-4`}>
+          {/* Right Column - Activities & Treasure Vault */}
+          <div className="flex flex-col gap-4 h-full overflow-hidden">
+            {/* Activities Section - Compact */}
+            <div className="flex-1 min-h-0">
+              <MonsterActivities 
+                monster={monster}
+                activities={activities}
+                theme={theme}
+                className="compact-mode"
+                onEffectTrigger={triggerEffect}
+              />
+            </div>
+
+            {/* Treasure Vault Section - Compact */}
+            <div className="flex-1 min-h-0">
               <LootBoxUtil 
-                className="w-full" 
+                className="compact-mode" 
                 externalLootBoxes={lootBoxes} 
                 loadDataIndependently={false} 
               />
             </div>
-            
-            {/* Level Up Button */}
-            {monster.status.type === 'Home' && monster.exp >= getFibonacciExp(monster.level) && (
-              <div className={`level-up-section ${theme.container} rounded-lg p-4 mt-4`}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className={`text-xl font-bold ${theme.text}`}>Level Up Available</h3>
-                    <p className={`${theme.text}`}>Your monster has enough experience to level up</p>
-                  </div>
-                  <button
-                    onClick={handleLevelUp}
-                    disabled={isLevelingUp}
-                    className={`px-4 py-2 rounded-lg ${theme.buttonBg} ${theme.buttonHover} ${theme.text} level-up-button-glow`}
-                  >
-                    {isLevelingUp ? 'Leveling...' : 'Level Up'}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -276,71 +304,102 @@ export const MonsterManagement: React.FC = (): JSX.Element => {
     isAdopting,
     isLevelingUp,
     handleAdoptMonster,
-    handleLevelUp
+    handleLevelUp,
+    showCardModal
   ]);
 
   return (
-    <div className="monster-management-container">
-      <div className={`monster-management-inner ${theme.bg}`}>
-        <Header
+    <div className={`min-h-screen ${theme.bg}`}>
+      <Header theme={theme} darkMode={darkMode} />
+      
+      {showConfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.3}
+        />
+      )}
+
+      {/* Monster NFT Card Modal */}
+      {showCardModal && walletStatus?.monster && (
+        <Modal
+          onClose={() => setShowCardModal(false)}
           theme={theme}
-          darkMode={darkMode}
-        />
-        
-        {showConfetti && (
-          <Confetti
-            width={window.innerWidth}
-            height={window.innerHeight}
-            recycle={false}
-            numberOfPieces={500}
-            gravity={0.3}
-          />
-        )}
-
-        <StatAllocationModal
-          isOpen={showStatModal}
-          onClose={() => setShowStatModal(false)}
-          onConfirm={handleStatConfirm}
-          darkMode={darkMode}
-        />
-        <PurchaseModal
-          isOpen={isPurchaseModalOpen}
-          onClose={() => setIsPurchaseModalOpen(false)}
-          onPurchase={handlePurchase}
-          contractName="Eternal Pass"
-        />
-
-        <div className={`monster-management-content ${theme.text}`}>
-          <div className="monster-management-wrapper">
-            {!walletStatus?.isUnlocked ? (
-              <div className={`no-monster-card ${theme.container} border ${theme.border} backdrop-blur-md`}>
-                <h2 className={`no-monster-title ${theme.text}`}>Unlock Access to Manage Monsters</h2>
-                <button
-                  onClick={() => setIsPurchaseModalOpen(true)}
-                  className={`adopt-button ${theme.buttonBg} ${theme.buttonHover} ${theme.text}`}
-                >
-                  Purchase Access
-                </button>
-              </div>
-            ) : !walletStatus?.faction ? (
-              <div className={`no-monster-card ${theme.container} border ${theme.border} backdrop-blur-md`}>
-                <h2 className={`no-monster-title ${theme.text}`}>Join a Faction First</h2>
-                <a
-                  href="/factions"
-                  className={`adopt-button ${theme.buttonBg} ${theme.buttonHover} ${theme.text}`}
-                >
-                  Choose Your Faction
-                </a>
-              </div>
-            ) : (
-              renderMonsterCard
-            )}
-            
-            {/* Loot boxes now appear within the monster card component */}
+        >
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`text-xl font-bold ${theme.text}`}>Monster NFT Card</h2>
+              <button
+                onClick={() => setShowCardModal(false)}
+                className={`text-xl ${theme.text} hover:opacity-70`}
+              >
+                ×
+              </button>
+            </div>
+            <MonsterCardDisplay 
+              monster={localMonster || walletStatus.monster}
+              expanded={true}
+              className="w-full"
+            />
           </div>
-        </div>
-        <Footer darkMode={darkMode} />
+        </Modal>
+      )}
+
+      <StatAllocationModal
+        isOpen={showStatModal}
+        onClose={() => setShowStatModal(false)}
+        onConfirm={handleStatConfirm}
+        darkMode={darkMode}
+      />
+      
+      <PurchaseModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        onPurchase={handlePurchase}
+        contractName="Eternal Pass"
+      />
+
+      <div className="container mx-auto px-4 py-8">
+        {!walletStatus?.isUnlocked ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+            <div className={`${theme.container} border ${theme.border} backdrop-blur-md rounded-2xl p-8 text-center max-w-md`}>
+              <div className="text-6xl mb-4">🔐</div>
+              <h2 className={`text-2xl font-bold ${theme.text} mb-4`}>Unlock Access</h2>
+              <p className={`${theme.text} opacity-80 mb-6`}>
+                Purchase access to start managing your monsters
+              </p>
+              <button
+                onClick={() => setIsPurchaseModalOpen(true)}
+                className={`w-full px-6 py-3 rounded-xl ${theme.buttonBg} ${theme.buttonHover} ${theme.text} font-semibold transition-all transform hover:scale-105`}
+              >
+                Purchase Access
+              </button>
+            </div>
+          </div>
+        ) : !walletStatus?.faction ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+            <div className={`${theme.container} border ${theme.border} backdrop-blur-md rounded-2xl p-8 text-center max-w-md`}>
+              <div className="text-6xl mb-4">⚔️</div>
+              <h2 className={`text-2xl font-bold ${theme.text} mb-4`}>Choose Your Faction</h2>
+              <p className={`${theme.text} opacity-80 mb-6`}>
+                Join a faction before you can manage monsters
+              </p>
+              <a
+                href="/factions"
+                className={`inline-block w-full px-6 py-3 rounded-xl ${theme.buttonBg} ${theme.buttonHover} ${theme.text} font-semibold transition-all transform hover:scale-105 text-center`}
+              >
+                Choose Faction
+              </a>
+            </div>
+          </div>
+        ) : (
+          renderMonsterDashboard
+        )}
       </div>
+      
+      <Footer darkMode={darkMode} />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { useTokens } from '../contexts/TokenContext';
 import { formatTokenAmount } from '../utils/aoHelpers';
@@ -8,6 +8,7 @@ import { Gateway, ASSET_INFO, SupportedAssetId } from '../constants/Constants';
 // Maximum number of decimal places to display for token amounts
 const MAX_DECIMALS = 3;
 
+// Interface for representing each inventory section
 interface InventorySection {
   title: string;
   items: string[];
@@ -26,6 +27,9 @@ const Inventory = () => {
   } = useTokens();
   
   const theme = currentTheme(darkMode);
+
+  // Add inventory visibility state
+  const [isInventoryOpen, setIsInventoryOpen] = useState(true);
 
   // Initialize openSections state once on component mount
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean}>(() => {
@@ -53,6 +57,10 @@ const Inventory = () => {
       ...prev,
       [section]: !prev[section]
     }));
+  };
+
+  const toggleInventory = () => {
+    setIsInventoryOpen(prev => !prev);
   };
 
   // Group assets by section from ASSET_INFO - this is static data
@@ -167,20 +175,30 @@ const Inventory = () => {
   const hasWallet = !!wallet?.address;
 
   return (
-    <div className={`fixed right-4 top-32 ${theme.container} border ${theme.border} backdrop-blur-md transition-all duration-300 rounded-xl z-40 inventory-container max-w-[280px]`}>
-      <div className={`flex items-center justify-between p-3 ${theme.text}`}>
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleSection('main')}>
+    <div className={`fixed right-4 top-32 ${theme.container} border ${theme.border} backdrop-blur-md transition-all duration-300 rounded-xl z-40 inventory-container ${isInventoryOpen ? 'w-[280px]' : 'w-[60px]'} overflow-hidden`}>
+      <div className={`flex items-center justify-between p-3 ${theme.text} ${!isInventoryOpen ? 'justify-center' : ''}`}>
+        <div className="flex items-center gap-2 cursor-pointer" onClick={toggleInventory}>
           <span className="text-xl">👜</span>
-          <h2 className="text-lg font-bold">Inventory</h2>
+          {isInventoryOpen && (
+            <>
+              <h2 className="text-lg font-bold whitespace-nowrap">Inventory</h2>
+              <span className="transition-transform duration-200 rotate-180">
+                ▶
+              </span>
+            </>
+          )}
+          {!isInventoryOpen && (
+            <span className="transition-transform duration-200 rotate-0 absolute right-2">
+              ▶
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {hasWallet ? (
+          {hasWallet && isInventoryOpen ? (
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                if (openSections.main) {
-                  refreshAllTokens();
-                }
+                refreshAllTokens();
               }} 
               className="text-sm hover:text-[#F4860A] transition-colors"
               title="Refresh all assets"
@@ -190,12 +208,12 @@ const Inventory = () => {
           ) : null}
         </div>
       </div>
-      {!hasWallet && openSections.main ? (
+      {!hasWallet && isInventoryOpen ? (
         <div className="p-3 text-center">
           <p className={`${theme.text} text-sm`}>Connect wallet to view assets</p>
         </div>
       ) : (
-        <div className={`overflow-hidden transition-all duration-300 ${openSections.main ? 'max-h-fit w-full p-3' : 'max-h-0 w-0 p-0'}`}>
+        <div className={`transition-all duration-300 ${isInventoryOpen ? 'opacity-100 p-3' : 'opacity-0 p-0 h-0'}`}>
           <div className="space-y-3">
             {inventorySections.map((section) => (
               <div key={section.title} className="border-b border-[#F4860A]/30 last:border-b-0 pb-3 last:pb-0">
